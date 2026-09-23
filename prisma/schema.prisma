@@ -1,0 +1,271 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  PROVIDER
+  CUSTOMER
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
+
+enum NotificationType {
+  APPOINTMENT_CREATED
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_REMINDER
+}
+
+enum NotificationChannel {
+  EMAIL
+  IN_APP
+}
+
+enum ContactMethod {
+  EMAIL
+  PHONE
+  WHATSAPP
+  IN_APP
+}
+
+enum PricingType {
+  FIXED
+  PER_HOUR
+  ON_REQUEST
+  FREE
+  NOT_SHOWN
+}
+
+enum PricingUnit {
+  PER_HOUR
+  PER_SERVICE
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  googleId     String?   @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         Role      @default(CUSTOMER)
+  avatarUrl    String?
+  isActive     Boolean   @default(true)
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  providerProfile        ProviderProfile?
+  appointmentsAsCustomer Appointment[]            @relation("CustomerAppointments")
+  reminders              AppointmentReminder[]
+  reviews                Review[]
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
+  refreshTokens          RefreshToken[]
+  passwordResetTokens    PasswordResetToken[]
+
+  @@index([role])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model ProviderProfile {
+  id             String          @id @default(cuid())
+  userId         String          @unique
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName   String
+  slug           String          @unique
+  description    String?
+  location       String?
+  contactPhone   String?
+  contactEmail   String?
+  contactMethods ContactMethod[] @default([])
+  profileImage   String?
+  isVerified     Boolean         @default(false)
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  services      Service[]
+  availabilities Availability[]
+  appointments  Appointment[]
+  reviews       Review[]
+
+  @@index([businessName])
+  @@index([isActive])
+  @@map("provider_profiles")
+}
+
+model Service {
+  id                String      @id @default(cuid())
+  providerProfileId String
+  provider          ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  name              String
+  slug              String      @unique
+  description       String?
+  imageUrl          String?
+  pricingType       PricingType @default(FIXED)
+  pricingUnit       PricingUnit?
+  price             Decimal?    @db.Decimal(10, 2)
+  durationMinutes   Int?
+  startTime         String?     @db.VarChar(5)
+  endTime           String?     @db.VarChar(5)
+  isActive          Boolean     @default(true)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  appointments Appointment[]
+
+  @@index([providerProfileId])
+  @@index([isActive])
+  @@map("services")
+}
+
+model Availability {
+  id                   String   @id @default(cuid())
+  providerProfileId    String
+  provider             ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  dayOfWeek            Int
+  startTime            String
+  endTime              String
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([providerProfileId, dayOfWeek, startTime, endTime])
+  @@index([dayOfWeek])
+  @@map("availabilities")
+}
+
+model Appointment {
+  id                String            @id @default(cuid())
+  customerId        String
+  customer          User              @relation("CustomerAppointments", fields: [customerId], references: [id], onDelete: Restrict)
+  providerProfileId String
+  provider          ProviderProfile   @relation(fields: [providerProfileId], references: [id], onDelete: Restrict)
+  serviceId         String
+  service           Service           @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  startTime         DateTime
+  endTime           DateTime
+  status            AppointmentStatus @default(PENDING)
+  notes             String?
+  priceAtBooking    Decimal?          @db.Decimal(10, 2)
+  reminderAt        DateTime?
+  reminderSentAt    DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  review    Review?
+  reminders AppointmentReminder[]
+
+  @@index([customerId])
+  @@index([providerProfileId, startTime])
+  @@index([serviceId])
+  @@index([startTime, reminderSentAt])
+  @@map("appointments")
+}
+
+model AppointmentReminder {
+  id            String     @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reminderAt    DateTime
+  sentAt        DateTime?
+  createdAt     DateTime   @default(now())
+
+  @@index([appointmentId])
+  @@index([reminderAt, sentAt])
+  @@map("appointment_reminders")
+}
+
+model Review {
+  id                String   @id @default(cuid())
+  customerId        String
+  customer          User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  providerProfileId String
+  provider          ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  appointmentId     String   @unique
+  appointment       Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  rating            Int
+  comment           String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([providerProfileId])
+  @@index([customerId])
+  @@map("reviews")
+}
+
+model Notification {
+  id        String              @id @default(cuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  channel   NotificationChannel
+  subject   String?
+  body      String
+  metadata  Json?
+  readAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled         Boolean  @default(true)
+  inAppEnabled         Boolean  @default(true)
+  appointmentCreated   Boolean  @default(true)
+  appointmentConfirmed Boolean  @default(true)
+  appointmentCancelled Boolean  @default(true)
+  appointmentReminder  Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("notification_preferences")
+}
