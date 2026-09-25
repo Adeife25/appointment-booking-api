@@ -296,4 +296,116 @@ describe('AuthService', () => {
       ).rejects.toThrow('Invalid or expired reset token');
     });
   });
+
+  describe('oauthLogin', () => {
+    const oauthUser = {
+      id: 'user-oauth',
+      email: 'ada@example.com',
+      name: 'Ada Lovelace',
+      role: Role.CUSTOMER,
+      googleId: 'google-1',
+      isActive: true,
+      deletedAt: null,
+      providerProfile: null,
+    };
+
+    const oauthData = {
+      googleId: 'google-1',
+      email: 'ada@example.com',
+      name: 'Ada Lovelace',
+    };
+
+    beforeEach(() => {
+      prisma.user.create = jest.fn().mockResolvedValue(oauthUser);
+      prisma.user.update = jest.fn().mockResolvedValue(oauthUser);
+    });
+
+    it('creates a new account when the email is unknown', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      const result = await service.oauthLogin(oauthData);
+
+      expect(prisma.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            email: 'ada@example.com',
+            googleId: 'google-1',
+            role: Role.CUSTOMER,
+            passwordHash: 'hashed',
+          }),
+        }),
+      );
+      expect(prisma.notificationPreference.create).toHaveBeenCalledWith({
+        data: { userId: 'user-oauth' },
+      });
+      expect(result.accessToken).toBe('access-token');
+      expect(result.user.id).toBe('user-oauth');
+      expect(result.user.role).toBe(Role.CUSTOMER);
+      expect(result.user.providerProfileId).toBeNull();
+      expect(prisma.refreshToken.create).toHaveBeenCalled();
+    });
+
+    it('links googleId to an existing account without one', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        ...oauthUser,
+        googleId: null,
+      });
+
+      const result = await service.oauthLogin(oauthData);
+
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'user-oauth' },
+          data: { googleId: 'google-1' },
+        }),
+      );
+      expect(prisma.user.create).not.toHaveBeenCalled();
+      expect(result.user.id).toBe('user-oauth');
+    });
+
+    it('reuses an account already linked to the google id', async () => {
+      prisma.user.findUnique.mockResolvedValue(oauthUser);
+
+      const result = await service.oauthLogin(oauthData);
+
+      expect(prisma.user.create).not.toHaveBeenCalled();
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(result.user.id).toBe('user-oauth');
+    });
+
+    it('rejects an account that has been deleted', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        ...oauthUser,
+        googleId: null,
+        deletedAt: new Date(),
+      });
+
+      await expect(service.oauthLogin(oauthData)).rejects.toThrow(
+        'Account is deleted',
+      );
+    });
+
+    it('rejects a disabled account', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        ...oauthUser,
+        isActive: false,
+      });
+
+      await expect(service.oauthLogin(oauthData)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('passes the user agent through to stored refresh tokens', async () => {
+      prisma.user.findUnique.mockResolvedValue(oauthUser);
+
+      await service.oauthLogin(oauthData, 'test-agent');
+
+      expect(prisma.refreshToken.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ userAgent: 'test-agent' }),
+        }),
+      );
+    });
+  });
 });
