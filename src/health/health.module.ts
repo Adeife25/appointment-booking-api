@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { TerminusModule } from '@nestjs/terminus';
+import { isMetricsEnabled } from '../config/metrics';
 import { HealthController, MetricsController } from './health.controller';
 
-const metricsEnabled = process.env.METRICS_ENABLED === 'true';
+const metricsEnabled = isMetricsEnabled();
 
 @Module({
   imports: [
