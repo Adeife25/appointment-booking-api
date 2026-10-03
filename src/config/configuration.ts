@@ -31,6 +31,10 @@ export default () => ({
   resendFrom:
     process.env.RESEND_FROM ?? 'Appointment Booking <onboarding@resend.dev>',
   returnResetToken: process.env.RETURN_RESET_TOKEN === 'true',
+  metricsEnabled: process.env.METRICS_ENABLED === 'true',
+  trustProxy: process.env.TRUST_PROXY
+    ? parseInt(process.env.TRUST_PROXY, 10)
+    : 1,
   reminderLeadHours: parseInt(process.env.REMINDER_LEAD_HOURS ?? '24', 10),
   redisUrl: process.env.REDIS_URL,
 });

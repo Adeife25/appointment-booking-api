@@ -24,11 +24,25 @@ export const validationSchema = Joi.object({
   SEED_ADMIN_EMAIL: Joi.string().email().optional(),
   SEED_ADMIN_PASSWORD: Joi.string().min(8).optional(),
   SEED_ADMIN_NAME: Joi.string().optional(),
-  SWAGGER_ENABLED: Joi.boolean().default(true),
+  SWAGGER_ENABLED: Joi.boolean().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.boolean().default(false),
+    otherwise: Joi.boolean().default(true),
+  }),
   GOOGLE_CLIENT_ID: Joi.string().optional(),
   GOOGLE_CLIENT_SECRET: Joi.string().optional(),
   GOOGLE_CALLBACK_URL: Joi.string().uri().optional(),
   RESEND_API_KEY: Joi.string().allow('').optional(),
   RESEND_FROM: Joi.string().allow('').optional(),
-  RETURN_RESET_TOKEN: Joi.boolean().default(false),
+  RETURN_RESET_TOKEN: Joi.boolean().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.boolean().valid(false).default(false),
+    otherwise: Joi.boolean().default(false),
+  }),
+  METRICS_ENABLED: Joi.boolean().when('NODE_ENV', {
+    is: 'test',
+    then: Joi.boolean().default(true),
+    otherwise: Joi.boolean().default(false),
+  }),
+  TRUST_PROXY: Joi.number().integer().min(0).max(10).default(1),
 });

@@ -5,6 +5,7 @@ dist
 .env
 .env.*
 !.env.example
+!.env.production.example
 coverage
 .nyc_output
 docs
@@ -15,6 +16,13 @@ test
 *.log
 npm-debug.log*
 docker-compose.yml
+docker-compose.prod.yml
 .nvmrc
-prettierrc
+.prettierrc
+.prettierignore
 eslint.config.mjs
+.opencode
+.github
+nginx
+scripts
+src/generated
