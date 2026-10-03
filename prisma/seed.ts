@@ -46,9 +46,7 @@ if (KNOWN_INSECURE_PASSWORDS.includes(adminPassword)) {
 }
 
 if (demoDataEnabled && !demoPassword) {
-  console.error(
-    'SEED_DEMO_DATA=true requires SEED_DEMO_PASSWORD to be set.',
-  );
+  console.error('SEED_DEMO_DATA=true requires SEED_DEMO_PASSWORD to be set.');
   process.exit(1);
 }
 
