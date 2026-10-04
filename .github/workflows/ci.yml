@@ -70,7 +70,7 @@ jobs:
       packages: write
       id-token: write
     outputs:
-      image: ghcr.io/${{ steps.names.outputs.repo }}:${{ steps.names.outputs.tag }}
+      image: ghcr.io/${{ steps.names.outputs.repo }}:${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
