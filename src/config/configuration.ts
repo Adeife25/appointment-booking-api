@@ -1,3 +1,5 @@
+import { isMetricsEnabled } from './metrics';
+
 export default () => ({
   port: parseInt(process.env.PORT ?? '3001', 10),
   databaseUrl: process.env.DATABASE_URL,
@@ -31,6 +33,10 @@ export default () => ({
   resendFrom:
     process.env.RESEND_FROM ?? 'Appointment Booking <onboarding@resend.dev>',
   returnResetToken: process.env.RETURN_RESET_TOKEN === 'true',
+  metricsEnabled: isMetricsEnabled(),
+  trustProxy: process.env.TRUST_PROXY
+    ? parseInt(process.env.TRUST_PROXY, 10)
+    : 1,
   reminderLeadHours: parseInt(process.env.REMINDER_LEAD_HOURS ?? '24', 10),
   redisUrl: process.env.REDIS_URL,
 });

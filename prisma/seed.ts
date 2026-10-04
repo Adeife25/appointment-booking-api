@@ -17,6 +17,39 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
+const KNOWN_INSECURE_PASSWORDS = [
+  'AdminPass123!',
+  'CustomerPass123!',
+  'ProviderPass123!',
+];
+
+const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@example.com';
+const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+const adminName = process.env.SEED_ADMIN_NAME ?? 'Platform Admin';
+const demoDataEnabled = process.env.SEED_DEMO_DATA === 'true';
+const demoPassword = process.env.SEED_DEMO_PASSWORD;
+
+if (!adminPassword) {
+  console.error(
+    'SEED_ADMIN_PASSWORD is not set. Generate one with `openssl rand -base64 24` ' +
+      'and store it in your env file. The seeder refuses to use a built-in default.',
+  );
+  process.exit(1);
+}
+
+if (KNOWN_INSECURE_PASSWORDS.includes(adminPassword)) {
+  console.error(
+    'SEED_ADMIN_PASSWORD matches a password that is published in this repository. ' +
+      'Generate a unique one with `openssl rand -base64 24`.',
+  );
+  process.exit(1);
+}
+
+if (demoDataEnabled && !demoPassword) {
+  console.error('SEED_DEMO_DATA=true requires SEED_DEMO_PASSWORD to be set.');
+  process.exit(1);
+}
+
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: DATABASE_URL }),
 });
@@ -30,10 +63,6 @@ async function upsertNotifPref(userId: string) {
 }
 
 async function main() {
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@example.com';
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'AdminPass123!';
-  const adminName = process.env.SEED_ADMIN_NAME ?? 'Platform Admin';
-
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {
@@ -44,7 +73,7 @@ async function main() {
     },
     create: {
       email: adminEmail,
-      passwordHash: await bcrypt.hash(adminPassword, 12),
+      passwordHash: await bcrypt.hash(adminPassword!, 12),
       name: adminName,
       role: Role.ADMIN,
     },
@@ -52,12 +81,20 @@ async function main() {
   await upsertNotifPref(admin.id);
   console.log(`Admin ready: ${admin.email}`);
 
+  if (demoDataEnabled) {
+    await seedDemoData(demoPassword as string);
+  } else {
+    console.log('Demo data skipped (set SEED_DEMO_DATA=true to create it).');
+  }
+}
+
+async function seedDemoData(demoPassword: string) {
   const customer = await prisma.user.upsert({
     where: { email: 'customer@example.com' },
     update: { name: 'Demo Customer', isActive: true },
     create: {
       email: 'customer@example.com',
-      passwordHash: await bcrypt.hash('CustomerPass123!', 12),
+      passwordHash: await bcrypt.hash(demoPassword, 12),
       name: 'Demo Customer',
       role: Role.CUSTOMER,
     },
@@ -70,7 +107,7 @@ async function main() {
     update: { name: 'Sara Ade', isActive: true },
     create: {
       email: 'provider@example.com',
-      passwordHash: await bcrypt.hash('ProviderPass123!', 12),
+      passwordHash: await bcrypt.hash(demoPassword, 12),
       name: 'Sara Ade',
       role: Role.PROVIDER,
     },

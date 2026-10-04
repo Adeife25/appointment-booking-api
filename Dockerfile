@@ -18,12 +18,13 @@ RUN npm run build
 
 # ---- runner ----
 FROM base AS runner
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    NODE_OPTIONS=--enable-source-maps
 RUN addgroup --system --gid 1001 appgroup && \
     adduser  --system --uid 1001 --ingroup appgroup appuser
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && npm cache clean --force
 COPY prisma7.config.ts ./
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
@@ -35,4 +36,9 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+STOPSIGNAL SIGTERM
+
+# Migrations run as a release/pre-deploy command (`npm run prisma:deploy`) so
+# concurrent replicas never race `migrate deploy`. Local: docker compose run
+# --rm api npm run prisma:deploy
+CMD ["node", "dist/main"]
