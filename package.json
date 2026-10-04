@@ -8,7 +8,6 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "postinstall": "prisma generate",
     "start": "nest start",
     "prestart": "node scripts/start-db.mjs",
     "start:dev": "nest start --watch",
