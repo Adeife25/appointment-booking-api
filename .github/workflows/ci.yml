@@ -135,14 +135,31 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
+      packages: read
     concurrency:
       group: production
       cancel-in-progress: false
     steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull application image
+        run: docker pull ${{ needs.docker-build.outputs.image }}
+
       - name: Run database migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL is not configured; skipping migrations." >&2
+            exit 0
+          fi
           docker run --rm \
             -e DATABASE_URL \
             -e NODE_ENV=production \
