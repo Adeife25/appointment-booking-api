@@ -24,6 +24,7 @@ Backend API for discovering service providers, viewing services and availability
 
 ```bash
 npm install
+npm run prisma:generate   # generate the Prisma client into src/generated/prisma (required before build/start)
 cp .env.example .env    # then adjust secrets
 node scripts/start-db.mjs   # or: npm run db:up (started automatically by start/start:dev)
 npx prisma migrate deploy
