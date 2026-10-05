@@ -2,6 +2,8 @@
 
 Backend API for discovering service providers, viewing services and availability, and booking appointments. Customers book time with providers; providers manage their services, availability, and appointments; admins oversee the platform and verify providers.
 
+**Live API:** https://appointment-booking-api-9gov.onrender.com
+
 ## Stack
 
 - **NestJS 11** + **TypeScript 5.7**
